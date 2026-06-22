@@ -1,1 +1,97 @@
+name: Ransomware Response Workflow
+version: "1.0"
+status: production-ready
 
+trigger:
+  sources:
+    - endpoint_detection
+    - file_server_alert
+    - user_report
+    - siem_alert
+    - backup_monitoring
+  conditions:
+    - encrypted_files
+    - ransom_note
+    - mass_file_rename
+    - abnormal_file_share_activity
+    - suspicious_privileged_account_activity
+
+severity_matrix:
+  critical:
+    condition: "Any confirmed ransomware activity"
+
+workflow:
+  - step: activate_incident_response
+    action: "Declare critical incident and activate response team"
+    owner: incident_manager
+    required: true
+
+  - step: isolate_affected_assets
+    action: "Immediately isolate affected endpoints, servers and network segments"
+    owner: infrastructure_admin
+    required: true
+
+  - step: disable_compromised_accounts
+    action: "Disable suspected compromised accounts and revoke active sessions"
+    owner: identity_admin
+    required: true
+
+  - step: stop_spread
+    action: "Disable SMB shares, block malicious traffic and stop suspicious processes"
+    owner: security_admin
+    required: true
+
+  - step: preserve_evidence
+    action: "Preserve ransom notes, encrypted samples, logs, memory and disk images when possible"
+    owner: forensic_analyst
+    required: true
+
+  - step: identify_scope
+    action: "Identify affected hosts, users, shares, databases, backups and business services"
+    owner: soc_analyst
+    required: true
+
+  - step: identify_initial_access
+    action: "Investigate phishing, RDP, VPN, exposed services, stolen credentials or vulnerability exploitation"
+    owner: soc_analyst
+    required: true
+
+  - step: validate_backups
+    action: "Verify backup integrity before restoration"
+    owner: backup_admin
+    required: true
+
+  - step: eradicate_threat
+    action: "Remove malware, close access vector, patch vulnerabilities and reset credentials"
+    owner: security_admin
+    required: true
+
+  - step: restore_services
+    action: "Restore systems from clean backups in controlled order"
+    owner: infrastructure_admin
+    required: true
+
+  - step: monitor_recovery
+    action: "Monitor restored environment for reinfection or attacker activity"
+    duration: "14 days"
+    required: true
+
+corrections:
+  - "Enforce MFA"
+  - "Restrict RDP and VPN access"
+  - "Review backup immutability"
+  - "Segment critical servers"
+  - "Patch exploited vulnerabilities"
+  - "Review privileged accounts"
+  - "Improve detection for mass file changes"
+
+artifacts:
+  - ransom_note
+  - encrypted_file_samples
+  - affected_hosts
+  - affected_users
+  - compromised_accounts
+  - file_hashes
+  - attacker_ips
+  - backup_status
+  - restoration_timeline
