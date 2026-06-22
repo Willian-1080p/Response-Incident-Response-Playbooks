@@ -1,1 +1,97 @@
 
+name: Data Breach Response Workflow
+version: "1.0"
+status: production-ready
+
+trigger:
+  sources:
+    - dlp_alert
+    - siem_alert
+    - cloud_security_alert
+    - user_report
+    - external_notification
+  conditions:
+    - sensitive_data_exposure
+    - unauthorized_access
+    - data_exfiltration
+    - public_data_leak
+    - abnormal_download_activity
+
+severity_matrix:
+  low:
+    condition: "Limited exposure without sensitive data"
+  medium:
+    condition: "Internal data exposed to unauthorized user"
+  high:
+    condition: "Sensitive data accessed or downloaded"
+  critical:
+    condition: "Confirmed external leak or regulated data exposure"
+
+workflow:
+  - step: confirm_breach
+    action: "Validate if data was accessed, copied, downloaded or exposed"
+    owner: soc_analyst
+    required: true
+
+  - step: identify_data
+    action: "Identify type, volume and sensitivity of exposed data"
+    owner: data_owner
+    required: true
+
+  - step: contain_access
+    action: "Disable unauthorized access, revoke sessions and remove public sharing"
+    owner: identity_admin
+    required: true
+
+  - step: preserve_logs
+    action: "Preserve authentication logs, access logs, cloud audit logs and file activity"
+    owner: soc_analyst
+    required: true
+
+  - step: identify_scope
+    action: "Identify affected users, systems, files, folders, databases and third parties"
+    owner: incident_manager
+    required: true
+
+  - step: remove_exposure
+    action: "Remove exposed files, disable links and correct permissions"
+    owner: system_owner
+    required: true
+
+  - step: legal_privacy_review
+    action: "Evaluate legal, privacy and regulatory notification requirements"
+    owner: legal_privacy_team
+    required: true
+
+  - step: notify_stakeholders
+    action: "Notify internal leadership and affected parties when required"
+    owner: incident_manager
+    required: false
+
+  - step: corrective_actions
+    action: "Fix root cause and apply preventive controls"
+    owner: security_admin
+    required: true
+
+  - step: close_incident
+    action: "Document breach details, impact, timeline, root cause and lessons learned"
+    owner: incident_manager
+    required: true
+
+corrections:
+  - "Review access permissions"
+  - "Enable DLP rules"
+  - "Apply least privilege"
+  - "Restrict external sharing"
+  - "Improve logging and monitoring"
+  - "Review data classification"
+
+artifacts:
+  - access_logs
+  - cloud_audit_logs
+  - affected_files
+  - affected_users
+  - exposed_data_types
+  - screenshots
+  - timeline
+  - notification_records
