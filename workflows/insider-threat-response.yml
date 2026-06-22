@@ -1,1 +1,98 @@
 
+name: Insider Threat Response Workflow
+version: "1.0"
+status: production-ready
+
+trigger:
+  sources:
+    - siem_alert
+    - dlp_alert
+    - hr_notification
+    - manager_report
+    - abnormal_behavior_detection
+  conditions:
+    - mass_download
+    - unusual_access_time
+    - privilege_abuse
+    - data_exfiltration
+    - policy_violation
+    - suspicious_file_transfer
+
+severity_matrix:
+  low:
+    condition: "Policy violation without confirmed data exposure"
+  medium:
+    condition: "Suspicious access or abnormal activity"
+  high:
+    condition: "Confirmed misuse of access or data transfer"
+  critical:
+    condition: "Confirmed malicious insider activity or major data theft"
+
+workflow:
+  - step: validate_alert
+    action: "Confirm activity is abnormal and not part of approved business process"
+    owner: soc_analyst
+    required: true
+
+  - step: preserve_evidence
+    action: "Preserve logs, file activity, authentication records, emails and endpoint telemetry"
+    owner: soc_analyst
+    required: true
+
+  - step: restrict_access
+    action: "Temporarily restrict access if risk is active and approved by management"
+    owner: identity_admin
+    required: true
+
+  - step: involve_hr_legal
+    action: "Engage HR, Legal and management before direct user action"
+    owner: incident_manager
+    required: true
+
+  - step: investigate_scope
+    action: "Identify accessed data, copied files, external transfers and privilege changes"
+    owner: soc_analyst
+    required: true
+
+  - step: review_endpoint
+    action: "Analyze endpoint activity, USB usage, cloud sync and file transfer tools"
+    owner: endpoint_admin
+    required: true
+
+  - step: contain_exfiltration
+    action: "Block external sharing, revoke tokens and disable risky transfer channels"
+    owner: security_admin
+    required: true
+
+  - step: determine_intent
+    action: "Classify as accidental, negligent or malicious based on evidence"
+    owner: incident_manager
+    required: true
+
+  - step: corrective_actions
+    action: "Apply least privilege, update policies and improve monitoring"
+    owner: security_admin
+    required: true
+
+  - step: close_case
+    action: "Document evidence, decisions, approvals, impact and final classification"
+    owner: incident_manager
+    required: true
+
+corrections:
+  - "Apply least privilege"
+  - "Review privileged accounts"
+  - "Enable DLP monitoring"
+  - "Restrict USB storage"
+  - "Review offboarding process"
+  - "Improve user behavior analytics"
+
+artifacts:
+  - user_activity_logs
+  - authentication_logs
+  - file_access_logs
+  - dlp_alerts
+  - endpoint_logs
+  - approval_records
+  - affected_data
+  - timeline
