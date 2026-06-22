@@ -1,1 +1,97 @@
+name: Phishing Response Workflow
+version: "1.0"
+status: production-ready
 
+trigger:
+  sources:
+    - user_report
+    - mail_gateway_alert
+    - microsoft_defender_alert
+    - siem_correlation
+  conditions:
+    - suspicious_sender
+    - malicious_url
+    - credential_harvesting
+    - suspicious_attachment
+
+severity_matrix:
+  low:
+    condition: "Email received but no user interaction"
+  medium:
+    condition: "User clicked link or opened attachment"
+  high:
+    condition: "Credentials submitted or malware executed"
+  critical:
+    condition: "Multiple users affected or confirmed compromise"
+
+workflow:
+  - step: collect_email
+    action: "Collect original email, headers, sender, recipients, subject and attachments"
+    owner: soc_analyst
+    required: true
+
+  - step: analyze_headers
+    action: "Validate SPF, DKIM, DMARC, return-path, reply-to and sending IP"
+    owner: soc_analyst
+    required: true
+
+  - step: extract_iocs
+    action: "Extract URLs, domains, IP addresses, hashes and attachment names"
+    owner: soc_analyst
+    required: true
+
+  - step: check_reputation
+    action: "Check indicators in threat intelligence platforms"
+    tools:
+      - VirusTotal
+      - URLScan
+      - AbuseIPDB
+      - Microsoft Defender
+    required: true
+
+  - step: contain_email
+    action: "Search and remove similar emails from all mailboxes"
+    owner: messaging_admin
+    required: true
+
+  - step: block_indicators
+    action: "Block malicious sender, domains, URLs, hashes and IPs"
+    owner: security_admin
+    required: true
+
+  - step: user_response
+    action: "If user clicked or submitted credentials, reset password, revoke sessions and require MFA"
+    owner: identity_admin
+    required: true
+
+  - step: endpoint_check
+    action: "Scan affected endpoint and isolate device if malware execution is suspected"
+    owner: endpoint_admin
+    required: false
+
+  - step: notify_users
+    action: "Notify affected users and provide awareness guidance"
+    owner: soc_analyst
+    required: false
+
+  - step: close_incident
+    action: "Document timeline, IOCs, affected users, actions taken and lessons learned"
+    owner: incident_manager
+    required: true
+
+corrections:
+  - "Improve mail filtering rules"
+  - "Add malicious domains to blocklist"
+  - "Create awareness campaign"
+  - "Review MFA coverage"
+  - "Update phishing detection rules"
+
+artifacts:
+  - original_email
+  - email_headers
+  - malicious_urls
+  - sender_address
+  - sending_ip
+  - screenshots
+  - affected_users
+  - timeline
