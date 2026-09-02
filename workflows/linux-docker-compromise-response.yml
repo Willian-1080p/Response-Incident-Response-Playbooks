@@ -1,0 +1,86 @@
+name: Linux Docker Compromise Response Workflow
+version: "1.0"
+status: production-ready
+playbook: "../playbooks/linux-docker-compromise-response.md"
+
+trigger:
+  sources:
+    - container_runtime_alert
+    - edr_alert
+    - registry_alert
+    - siem_alert
+    - cloud_security_alert
+  conditions:
+    - malicious_container_process
+    - unknown_image
+    - docker_socket_exposure
+    - privileged_container_abuse
+    - container_escape_suspected
+
+severity_matrix:
+  low:
+    condition: "Policy violation without execution evidence"
+  medium:
+    condition: "Suspicious container or image under investigation"
+  high:
+    condition: "Container compromise confirmed without host escape"
+  critical:
+    condition: "Docker socket access, escape or host compromise confirmed"
+
+workflow:
+  - step: identify_workload
+    action: "Record container ID, image digest, host, command, user, mounts, capabilities and network"
+    owner: soc_analyst
+    required: true
+
+  - step: preserve_runtime_evidence
+    action: "Collect inspect, logs, diff, processes and daemon telemetry before removal"
+    owner: forensic_analyst
+    required: true
+
+  - step: isolate_workload
+    action: "Remove the workload from service and restrict its network"
+    owner: infrastructure_admin
+    required: true
+
+  - step: assess_host_exposure
+    action: "Check privileged mode, sensitive mounts, Docker socket and escape indicators"
+    owner: soc_analyst
+    required: true
+
+  - step: revoke_secrets
+    action: "Rotate mounted secrets, registry credentials and cloud tokens"
+    owner: identity_admin
+    required: true
+
+  - step: block_image
+    action: "Quarantine malicious digests and prevent deployment through registry and CI/CD"
+    owner: devops_admin
+    required: true
+
+  - step: rebuild
+    action: "Deploy a trusted image; rebuild the host if socket access or escape occurred"
+    owner: infrastructure_admin
+    required: true
+
+  - step: monitor
+    action: "Monitor runtime, registry, CI/CD and host activity"
+    owner: soc_analyst
+    duration: "14 days"
+    required: true
+
+corrections:
+  - "Run containers as non-root"
+  - "Remove unnecessary capabilities"
+  - "Avoid Docker socket mounts"
+  - "Pin and sign image digests"
+  - "Use read-only filesystems"
+
+artifacts:
+  - container_inspect
+  - container_logs
+  - container_diff
+  - image_digest
+  - daemon_logs
+  - registry_logs
+  - network_connections
