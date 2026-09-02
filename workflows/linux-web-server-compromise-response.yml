@@ -1,0 +1,86 @@
+name: Linux Web Server Compromise Response Workflow
+version: "1.0"
+status: production-ready
+playbook: "../playbooks/linux-web-server-compromise-response.md"
+
+trigger:
+  sources:
+    - waf_alert
+    - web_server_logs
+    - edr_alert
+    - file_integrity_alert
+    - user_report
+  conditions:
+    - webshell_detected
+    - website_defacement
+    - malicious_upload
+    - server_process_spawned_shell
+    - unauthorized_webroot_change
+
+severity_matrix:
+  low:
+    condition: "Blocked request without server impact"
+  medium:
+    condition: "Suspicious file or request pending validation"
+  high:
+    condition: "Webshell or unauthorized application change confirmed"
+  critical:
+    condition: "Root access, sensitive data access or lateral movement confirmed"
+
+workflow:
+  - step: remove_from_service
+    action: "Remove the affected instance from the load balancer or use a maintenance page"
+    owner: infrastructure_admin
+    required: true
+
+  - step: preserve_evidence
+    action: "Preserve web, application, WAF, proxy, system logs and suspicious files with hashes"
+    owner: forensic_analyst
+    required: true
+
+  - step: contain_traffic
+    action: "Restrict outbound traffic and temporarily block exploited routes and indicators"
+    owner: security_admin
+    required: true
+
+  - step: identify_vector
+    action: "Determine vulnerable endpoint, request, upload, credential or dependency"
+    owner: soc_analyst
+    required: true
+
+  - step: assess_data
+    action: "Determine accessed data, secrets, sessions and downstream systems"
+    owner: data_owner
+    required: true
+
+  - step: revoke_secrets
+    action: "Rotate application, database, API and administrative credentials"
+    owner: identity_admin
+    required: true
+
+  - step: rebuild_service
+    action: "Deploy a clean image and trusted application artifact with the vulnerability corrected"
+    owner: infrastructure_admin
+    required: true
+
+  - step: monitor
+    action: "Monitor requests, file integrity, processes and outbound traffic"
+    owner: soc_analyst
+    duration: "14 days"
+    required: true
+
+corrections:
+  - "Patch applications and dependencies"
+  - "Prevent executable uploads"
+  - "Use WAF rules"
+  - "Apply least privilege"
+  - "Deploy immutable artifacts"
+
+artifacts:
+  - web_logs
+  - application_logs
+  - waf_logs
+  - suspicious_files
+  - file_hashes
+  - affected_data
+  - request_timeline
