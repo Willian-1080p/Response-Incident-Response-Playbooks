@@ -1,0 +1,85 @@
+name: Linux Privilege Escalation Response Workflow
+version: "1.0"
+status: production-ready
+playbook: "../playbooks/linux-privilege-escalation-response.md"
+
+trigger:
+  sources:
+    - auditd_alert
+    - sudo_logs
+    - edr_alert
+    - siem_alert
+  conditions:
+    - unauthorized_sudo
+    - unexpected_uid_zero
+    - suid_abuse
+    - capability_abuse
+    - kernel_exploit
+
+severity_matrix:
+  low:
+    condition: "Unapproved privilege request without execution"
+  medium:
+    condition: "Suspicious privileged command requiring validation"
+  high:
+    condition: "Unauthorized sudo or elevated execution confirmed"
+  critical:
+    condition: "Root access, persistence or host integrity loss confirmed"
+
+workflow:
+  - step: validate_event
+    action: "Confirm user, command, parent process, privilege level and UTC timestamp"
+    owner: soc_analyst
+    required: true
+
+  - step: preserve_evidence
+    action: "Collect volatile state, sudo and audit logs, sudoers, SUID, SGID and capabilities"
+    owner: forensic_analyst
+    required: true
+
+  - step: isolate_host
+    action: "Isolate the host when privileged access is active or integrity is uncertain"
+    owner: infrastructure_admin
+    required: true
+
+  - step: revoke_identity
+    action: "Lock affected accounts, revoke sessions and rotate reachable secrets"
+    owner: identity_admin
+    required: true
+
+  - step: identify_vector
+    action: "Determine exploited vulnerability, sudo rule, credential or binary"
+    owner: soc_analyst
+    required: true
+
+  - step: remove_persistence
+    action: "Preserve then remove unauthorized services, cron jobs, keys and privileged artifacts"
+    owner: infrastructure_admin
+    required: true
+
+  - step: rebuild_if_root
+    action: "Rebuild from a trusted image when root access is confirmed or integrity cannot be proven"
+    owner: infrastructure_admin
+    required: true
+
+  - step: monitor
+    action: "Monitor privileged commands, account changes and persistence indicators"
+    owner: soc_analyst
+    duration: "7 days"
+    required: true
+
+corrections:
+  - "Review sudo permissions"
+  - "Inventory SUID and capabilities"
+  - "Patch exploited vulnerabilities"
+  - "Enable auditd rules"
+  - "Apply least privilege"
+
+artifacts:
+  - sudo_logs
+  - audit_logs
+  - process_list
+  - suid_sgid_inventory
+  - capabilities
+  - sudoers_files
+  - timeline
