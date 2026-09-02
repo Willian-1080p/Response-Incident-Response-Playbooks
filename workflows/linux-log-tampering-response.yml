@@ -1,0 +1,84 @@
+name: Linux Log Tampering Response Workflow
+version: "1.0"
+status: production-ready
+playbook: "../playbooks/linux-log-tampering-response.md"
+
+trigger:
+  sources:
+    - siem_gap_alert
+    - file_integrity_alert
+    - auditd_alert
+    - administrator_report
+  conditions:
+    - log_file_deleted
+    - journal_gap
+    - logging_service_disabled
+    - audit_configuration_changed
+    - time_manipulation
+
+severity_matrix:
+  low:
+    condition: "Expected rotation or retention issue"
+  medium:
+    condition: "Unexplained logging gap under investigation"
+  high:
+    condition: "Unauthorized deletion or service disruption confirmed"
+  critical:
+    condition: "Tampering used to conceal root access or major compromise"
+
+workflow:
+  - step: preserve_available_logs
+    action: "Copy journals, log files and configurations with metadata and hashes before repair"
+    owner: forensic_analyst
+    required: true
+
+  - step: collect_external_sources
+    action: "Collect SIEM, firewall, IAM, cloud, EDR, proxy and application logs"
+    owner: soc_analyst
+    required: true
+
+  - step: validate_time
+    action: "Check NTP status, clock changes and cross-source timestamp differences"
+    owner: infrastructure_admin
+    required: true
+
+  - step: identify_change
+    action: "Determine account, command, service change, deletion method and UTC window"
+    owner: soc_analyst
+    required: true
+
+  - step: contain_actor
+    action: "Lock involved accounts, revoke sessions and isolate the host when malicious activity is active"
+    owner: identity_admin
+    required: true
+
+  - step: reconstruct_timeline
+    action: "Use independent sources to reconstruct activity and explicitly document evidence gaps"
+    owner: forensic_analyst
+    required: true
+
+  - step: restore_logging
+    action: "Restore trusted configuration or rebuild the host if root or logging binaries were compromised"
+    owner: infrastructure_admin
+    required: true
+
+  - step: verify_delivery
+    action: "Test end-to-end remote log delivery, retention and alerting"
+    owner: soc_analyst
+    required: true
+
+corrections:
+  - "Centralize logs"
+  - "Protect remote retention"
+  - "Alert on logging service failures"
+  - "Monitor configuration integrity"
+  - "Enforce reliable time synchronization"
+
+artifacts:
+  - journal_files
+  - system_logs
+  - logging_config
+  - siem_events
+  - time_status
+  - integrity_results
+  - reconstructed_timeline
