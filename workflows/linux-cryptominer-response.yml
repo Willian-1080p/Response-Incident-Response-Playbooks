@@ -1,0 +1,86 @@
+name: Linux Cryptominer Response Workflow
+version: "1.0"
+status: production-ready
+playbook: "../playbooks/linux-cryptominer-response.md"
+
+trigger:
+  sources:
+    - resource_monitor
+    - edr_alert
+    - network_detection
+    - cloud_cost_alert
+    - administrator_report
+  conditions:
+    - sustained_high_cpu
+    - mining_pool_connection
+    - miner_binary
+    - wallet_indicator
+    - recurring_miner_process
+
+severity_matrix:
+  low:
+    condition: "Resource anomaly without mining evidence"
+  medium:
+    condition: "Mining indicator pending validation"
+  high:
+    condition: "Unauthorized mining confirmed"
+  critical:
+    condition: "Root access, propagation, credential theft or major cloud cost confirmed"
+
+workflow:
+  - step: capture_process
+    action: "Collect process tree, command, executable, user, resource use and connections before termination"
+    owner: soc_analyst
+    required: true
+
+  - step: preserve_sample
+    action: "Copy the binary without execution, record metadata and calculate hash"
+    owner: forensic_analyst
+    required: true
+
+  - step: block_mining_traffic
+    action: "Block confirmed pool domains, IPs and protocols at network controls"
+    owner: network_admin
+    required: true
+
+  - step: stop_workload
+    action: "Suspend or terminate mining processes after evidence collection"
+    owner: infrastructure_admin
+    required: true
+
+  - step: identify_vector
+    action: "Investigate exposed service, SSH credential, application exploit, container or cloud credential"
+    owner: soc_analyst
+    required: true
+
+  - step: remove_persistence
+    action: "Preserve and remove cron, systemd, shell and container persistence"
+    owner: infrastructure_admin
+    required: true
+
+  - step: rotate_credentials
+    action: "Revoke affected SSH, cloud, application and API credentials"
+    owner: identity_admin
+    required: true
+
+  - step: recover_and_monitor
+    action: "Rebuild when integrity is uncertain and monitor CPU, network, IAM and cloud cost"
+    owner: soc_analyst
+    duration: "14 days"
+    required: true
+
+corrections:
+  - "Restrict outbound traffic"
+  - "Patch exposed services"
+  - "Apply resource limits"
+  - "Harden cloud IAM"
+  - "Alert on mining protocols and cost anomalies"
+
+artifacts:
+  - process_tree
+  - binary_hash
+  - mining_pool_indicators
+  - wallet_indicators
+  - network_connections
+  - resource_metrics
+  - cloud_cost_records
