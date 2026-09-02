@@ -1,0 +1,84 @@
+name: Linux Brute-Force Response Workflow
+version: "1.0"
+status: production-ready
+playbook: "../playbooks/linux-brute-force-response.md"
+
+trigger:
+  sources:
+    - ssh_auth_logs
+    - fail2ban_alert
+    - firewall_alert
+    - siem_alert
+  conditions:
+    - repeated_failed_logins
+    - invalid_user_surge
+    - distributed_password_attack
+    - failure_followed_by_success
+
+severity_matrix:
+  low:
+    condition: "Blocked attempts with no valid account targeted"
+  medium:
+    condition: "Sustained attempts or service degradation"
+  high:
+    condition: "Valid account targeted or successful login suspected"
+  critical:
+    condition: "Unauthorized login and post-authentication activity confirmed"
+
+workflow:
+  - step: quantify_attempts
+    action: "Identify source IPs, targeted users, volume and UTC time window"
+    owner: soc_analyst
+    required: true
+
+  - step: preserve_logs
+    action: "Preserve auth, SSH, Fail2ban and firewall logs with hashes"
+    owner: soc_analyst
+    required: true
+
+  - step: check_success
+    action: "Correlate failures with accepted logins and subsequent activity"
+    owner: soc_analyst
+    required: true
+
+  - step: apply_rate_limit
+    action: "Apply temporary rate limiting or Fail2ban without blocking trusted administration paths"
+    owner: security_admin
+    required: true
+
+  - step: restrict_exposure
+    action: "Restrict SSH to VPN, bastion or approved source networks"
+    owner: network_admin
+    required: true
+
+  - step: handle_compromise
+    action: "If authentication succeeded, invoke the SSH compromise playbook"
+    owner: incident_manager
+    required: true
+
+  - step: strengthen_authentication
+    action: "Use SSH keys, disable password login after testing and prohibit root login"
+    owner: infrastructure_admin
+    required: true
+
+  - step: monitor
+    action: "Monitor failures, successes and lockouts across exposed hosts"
+    owner: soc_analyst
+    duration: "72 hours"
+    required: true
+
+corrections:
+  - "Deploy Fail2ban or equivalent"
+  - "Enforce SSH keys"
+  - "Restrict source networks"
+  - "Enable MFA or bastion"
+  - "Tune SIEM correlation"
+
+artifacts:
+  - auth_logs
+  - source_ips
+  - targeted_users
+  - fail2ban_status
+  - firewall_logs
+  - accepted_logins
+  - timeline
