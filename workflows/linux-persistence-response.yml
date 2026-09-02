@@ -1,0 +1,86 @@
+name: Linux Persistence Response Workflow
+version: "1.0"
+status: production-ready
+playbook: "../playbooks/linux-persistence-response.md"
+
+trigger:
+  sources:
+    - edr_alert
+    - file_integrity_alert
+    - auditd_alert
+    - siem_alert
+    - administrator_report
+  conditions:
+    - unknown_systemd_unit
+    - malicious_cron_job
+    - unauthorized_ssh_key
+    - shell_profile_backdoor
+    - preload_or_kernel_persistence
+
+severity_matrix:
+  low:
+    condition: "Unknown startup entry pending validation"
+  medium:
+    condition: "Suspicious persistence artifact without execution evidence"
+  high:
+    condition: "Malicious persistence confirmed"
+  critical:
+    condition: "Root, kernel or multi-host persistence confirmed"
+
+workflow:
+  - step: inventory_persistence
+    action: "Collect systemd units and timers, cron, SSH keys, shell profiles, preload, init and container startup entries"
+    owner: soc_analyst
+    required: true
+
+  - step: preserve_artifacts
+    action: "Copy files with metadata and hashes and preserve related process and network context"
+    owner: forensic_analyst
+    required: true
+
+  - step: isolate_host
+    action: "Restrict the host when persistence is active or reconnecting externally"
+    owner: infrastructure_admin
+    required: true
+
+  - step: trace_origin
+    action: "Determine creator, parent process, initial vector, first execution and affected identity"
+    owner: soc_analyst
+    required: true
+
+  - step: search_environment
+    action: "Search hashes, commands, names, keys, domains and IPs across all Linux assets"
+    owner: soc_analyst
+    required: true
+
+  - step: disable_safely
+    action: "Disable the mechanism after collection without executing embedded commands"
+    owner: infrastructure_admin
+    required: true
+
+  - step: eradicate_and_rebuild
+    action: "Remove all related artifacts, fix the vector and rebuild if root or full scope is uncertain"
+    owner: infrastructure_admin
+    required: true
+
+  - step: monitor
+    action: "Monitor creation of services, timers, cron jobs, keys and startup files"
+    owner: soc_analyst
+    duration: "14 days"
+    required: true
+
+corrections:
+  - "Monitor startup locations"
+  - "Restrict systemd and cron changes"
+  - "Inventory SSH keys"
+  - "Enable file integrity monitoring"
+  - "Apply least privilege"
+
+artifacts:
+  - systemd_units
+  - timers
+  - cron_entries
+  - authorized_keys
+  - shell_profiles
+  - artifact_hashes
+  - process_and_network_context
