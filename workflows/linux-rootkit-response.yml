@@ -1,0 +1,86 @@
+name: Linux Rootkit Response Workflow
+version: "1.0"
+status: production-ready
+playbook: "../playbooks/linux-rootkit-response.md"
+
+trigger:
+  sources:
+    - edr_alert
+    - integrity_monitor
+    - rkhunter_alert
+    - chkrootkit_alert
+    - analyst_observation
+  conditions:
+    - hidden_process
+    - unknown_kernel_module
+    - system_binary_tampering
+    - network_hook
+    - persistent_stealth_activity
+
+severity_matrix:
+  low:
+    condition: "Scanner anomaly requiring validation"
+  medium:
+    condition: "Integrity mismatch without confirmed malicious behavior"
+  high:
+    condition: "Stealth artifact or binary tampering confirmed"
+  critical:
+    condition: "Kernel rootkit, root access or broad integrity loss confirmed"
+
+workflow:
+  - step: validate_alert
+    action: "Correlate scanner output with independent telemetry and package baselines"
+    owner: forensic_analyst
+    required: true
+
+  - step: isolate_without_reboot
+    action: "Isolate the host and avoid rebooting before volatile evidence collection"
+    owner: infrastructure_admin
+    required: true
+
+  - step: capture_volatile_state
+    action: "Collect memory when approved, processes, sockets, modules and kernel messages using trusted tooling"
+    owner: forensic_analyst
+    required: true
+
+  - step: image_storage
+    action: "Acquire forensic disk images, calculate hashes and maintain chain of custody"
+    owner: forensic_analyst
+    required: true
+
+  - step: assess_scope
+    action: "Compare offline files with trusted packages and search indicators across other hosts"
+    owner: soc_analyst
+    required: true
+
+  - step: revoke_secrets
+    action: "Rotate credentials, keys and tokens accessible from the host using a trusted system"
+    owner: identity_admin
+    required: true
+
+  - step: rebuild_host
+    action: "Reinstall from trusted media instead of relying on manual rootkit removal"
+    owner: infrastructure_admin
+    required: true
+
+  - step: monitor
+    action: "Monitor rebuilt hosts and related assets for stealth indicators"
+    owner: soc_analyst
+    duration: "14 days"
+    required: true
+
+corrections:
+  - "Enable file integrity monitoring"
+  - "Use Secure Boot where supported"
+  - "Restrict kernel module loading"
+  - "Centralize logs"
+  - "Maintain trusted rebuild images"
+
+artifacts:
+  - memory_image
+  - disk_image
+  - kernel_modules
+  - process_list
+  - network_connections
+  - integrity_results
+  - chain_of_custody
