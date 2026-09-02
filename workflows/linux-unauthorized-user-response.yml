@@ -1,0 +1,85 @@
+name: Linux Unauthorized User Response Workflow
+version: "1.0"
+status: production-ready
+playbook: "../playbooks/linux-unauthorized-user-response.md"
+
+trigger:
+  sources:
+    - iam_alert
+    - auditd_alert
+    - siem_alert
+    - administrator_report
+  conditions:
+    - unknown_user_created
+    - unauthorized_uid_zero
+    - unexpected_sudo_membership
+    - unknown_ssh_key
+    - disabled_account_login
+
+severity_matrix:
+  low:
+    condition: "Unapproved account change without login"
+  medium:
+    condition: "Unknown account or key pending validation"
+  high:
+    condition: "Unauthorized login or privileged membership confirmed"
+  critical:
+    condition: "UID zero, root access or lateral movement confirmed"
+
+workflow:
+  - step: preserve_identity_files
+    action: "Preserve passwd, shadow, group, sudoers, SSH keys and related logs before edits"
+    owner: forensic_analyst
+    required: true
+
+  - step: validate_change
+    action: "Check approved automation, tickets, cloud-init and configuration management"
+    owner: soc_analyst
+    required: true
+
+  - step: contain_account
+    action: "Lock the account, revoke sessions and remove active privileges after evidence preservation"
+    owner: identity_admin
+    required: true
+
+  - step: investigate_activity
+    action: "Determine creation source, logins, commands, files, privileges and remote access"
+    owner: soc_analyst
+    required: true
+
+  - step: search_environment
+    action: "Search the same account, key and indicators across Linux assets"
+    owner: soc_analyst
+    required: true
+
+  - step: rotate_secrets
+    action: "Rotate secrets accessible to the unauthorized identity from a trusted device"
+    owner: identity_admin
+    required: true
+
+  - step: eradicate_identity
+    action: "Remove unauthorized account, keys and persistence after approval; rebuild if root was obtained"
+    owner: infrastructure_admin
+    required: true
+
+  - step: monitor
+    action: "Monitor account, group, sudoers and SSH key changes"
+    owner: soc_analyst
+    duration: "7 days"
+    required: true
+
+corrections:
+  - "Alert on account creation"
+  - "Review sudo membership"
+  - "Inventory SSH keys"
+  - "Harden provisioning automation"
+  - "Enforce access reviews"
+
+artifacts:
+  - passwd_files
+  - group_files
+  - sudoers_files
+  - authorized_keys
+  - auth_logs
+  - account_activity
+  - timeline
