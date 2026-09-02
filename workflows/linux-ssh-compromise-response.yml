@@ -1,0 +1,84 @@
+name: Linux SSH Compromise Response Workflow
+version: "1.0"
+status: production-ready
+playbook: "../playbooks/linux-ssh-compromise-response.md"
+
+trigger:
+  sources:
+    - ssh_auth_logs
+    - siem_alert
+    - ids_alert
+    - administrator_report
+  conditions:
+    - unknown_successful_login
+    - stolen_ssh_key
+    - unauthorized_authorized_key
+    - compromised_account
+
+severity_matrix:
+  low:
+    condition: "Failed attempts without successful authentication"
+  medium:
+    condition: "Suspicious successful login under investigation"
+  high:
+    condition: "Unauthorized login or key confirmed"
+  critical:
+    condition: "Root access, persistence or lateral movement confirmed"
+
+workflow:
+  - step: validate_access
+    action: "Confirm account, source IP, authentication method and UTC timestamp"
+    owner: soc_analyst
+    required: true
+
+  - step: preserve_evidence
+    action: "Preserve auth logs, journal, active sessions, processes, connections and SSH keys before changes"
+    owner: forensic_analyst
+    required: true
+
+  - step: contain_host
+    action: "Isolate the host or restrict SSH to a trusted administration network"
+    owner: infrastructure_admin
+    required: true
+
+  - step: revoke_access
+    action: "Lock compromised accounts, revoke keys and sessions, and rotate exposed secrets from a trusted device"
+    owner: identity_admin
+    required: true
+
+  - step: investigate_scope
+    action: "Determine commands, privilege use, persistence, data access and lateral movement"
+    owner: soc_analyst
+    required: true
+
+  - step: eradicate_access
+    action: "Remove unauthorized accounts, keys and persistence after evidence collection; rebuild if root integrity is uncertain"
+    owner: infrastructure_admin
+    required: true
+
+  - step: recover_service
+    action: "Restore from a trusted image, validate SSH hardening and reopen access in stages"
+    owner: infrastructure_admin
+    required: true
+
+  - step: monitor
+    action: "Monitor authentication, processes and network activity for recurrence"
+    owner: soc_analyst
+    duration: "7 days"
+    required: true
+
+corrections:
+  - "Enforce key-based authentication"
+  - "Disable direct root login"
+  - "Restrict SSH through VPN or bastion"
+  - "Enable MFA where supported"
+  - "Alert on SSH key changes"
+
+artifacts:
+  - auth_logs
+  - ssh_journal
+  - active_sessions
+  - process_list
+  - network_connections
+  - authorized_keys
+  - timeline
