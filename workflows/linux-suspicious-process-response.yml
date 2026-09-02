@@ -1,0 +1,85 @@
+name: Linux Suspicious Process Response Workflow
+version: "1.0"
+status: production-ready
+playbook: "../playbooks/linux-suspicious-process-response.md"
+
+trigger:
+  sources:
+    - edr_alert
+    - resource_monitor
+    - siem_alert
+    - administrator_report
+  conditions:
+    - unknown_high_resource_process
+    - reverse_shell
+    - temporary_directory_execution
+    - deleted_running_binary
+    - unexpected_outbound_connection
+
+severity_matrix:
+  low:
+    condition: "Resource anomaly with known legitimate process"
+  medium:
+    condition: "Unknown process requiring validation"
+  high:
+    condition: "Malicious process or reverse shell confirmed"
+  critical:
+    condition: "Root execution, persistence or lateral movement confirmed"
+
+workflow:
+  - step: capture_context
+    action: "Collect PID, parent, user, command line, executable, files, sockets and start time before termination"
+    owner: soc_analyst
+    required: true
+
+  - step: preserve_sample
+    action: "Copy the executable without running it, record metadata and calculate a SHA-256 hash"
+    owner: forensic_analyst
+    required: true
+
+  - step: restrict_network
+    action: "Block malicious communication or isolate the host"
+    owner: network_admin
+    required: true
+
+  - step: suspend_or_stop
+    action: "Suspend for analysis or terminate the process after evidence collection based on operational risk"
+    owner: infrastructure_admin
+    required: true
+
+  - step: identify_origin
+    action: "Determine package, download source, exploit, user action and persistence"
+    owner: soc_analyst
+    required: true
+
+  - step: search_indicators
+    action: "Search hash, command, domain, IP and path across the environment"
+    owner: soc_analyst
+    required: true
+
+  - step: eradicate
+    action: "Remove preserved artifacts and persistence, patch the vector and rebuild if integrity is uncertain"
+    owner: infrastructure_admin
+    required: true
+
+  - step: monitor
+    action: "Monitor processes, resource use, network and recurrence"
+    owner: soc_analyst
+    duration: "7 days"
+    required: true
+
+corrections:
+  - "Enable process telemetry"
+  - "Restrict execution from temporary paths"
+  - "Apply application isolation"
+  - "Monitor outbound traffic"
+  - "Maintain package integrity baselines"
+
+artifacts:
+  - process_tree
+  - command_line
+  - executable_hash
+  - file_sample
+  - network_connections
+  - resource_metrics
+  - timeline
