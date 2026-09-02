@@ -1,0 +1,85 @@
+name: Linux Firewall Compromise Response Workflow
+version: "1.0"
+status: production-ready
+playbook: "../playbooks/linux-firewall-compromise-response.md"
+
+trigger:
+  sources:
+    - configuration_monitor
+    - siem_alert
+    - network_monitor
+    - administrator_report
+  conditions:
+    - unauthorized_rule
+    - firewall_disabled
+    - default_policy_changed
+    - unknown_nat_redirect
+    - unexpected_port_exposure
+
+severity_matrix:
+  low:
+    condition: "Approved automation mismatch without exposure"
+  medium:
+    condition: "Unexplained rule pending validation"
+  high:
+    condition: "Unauthorized exposure or control removal confirmed"
+  critical:
+    condition: "Exposure exploited or command-and-control traffic enabled"
+
+workflow:
+  - step: preserve_rules
+    action: "Capture UFW, nftables, iptables, IPv6 rules, counters and configuration before changes"
+    owner: forensic_analyst
+    required: true
+
+  - step: protect_admin_access
+    action: "Confirm console or out-of-band access before modifying firewall rules"
+    owner: infrastructure_admin
+    required: true
+
+  - step: validate_source
+    action: "Check Docker, orchestration, configuration management, cloud and approved change records"
+    owner: soc_analyst
+    required: true
+
+  - step: contain_exposure
+    action: "Block malicious traffic using upstream controls and isolate exposed services"
+    owner: network_admin
+    required: true
+
+  - step: restore_minimum_rules
+    action: "Restore only approved minimum rules while preserving a trusted administration path"
+    owner: network_admin
+    required: true
+
+  - step: investigate_window
+    action: "Identify connections and exploitation during the exposure period"
+    owner: soc_analyst
+    required: true
+
+  - step: revoke_access
+    action: "Disable responsible compromised accounts or automation credentials"
+    owner: identity_admin
+    required: true
+
+  - step: verify_and_monitor
+    action: "Test rules, ports, persistence after planned restart and change alerts"
+    owner: soc_analyst
+    duration: "7 days"
+    required: true
+
+corrections:
+  - "Version firewall configuration"
+  - "Require change approval"
+  - "Monitor rule integrity"
+  - "Use upstream security groups"
+  - "Test IPv4 and IPv6 exposure"
+
+artifacts:
+  - ufw_status
+  - nftables_ruleset
+  - iptables_rules
+  - open_ports
+  - firewall_logs
+  - change_records
+  - connection_logs
